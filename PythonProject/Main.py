@@ -1,10 +1,19 @@
 import sys
-
+from pygame import mixer
 import pygame
 
 from Button import ImageButton
 
 pygame.init()
+mixer.init()
+
+pygame.mixer.set_num_channels(10)
+
+effect1 = pygame.mixer.Sound('sounds/fridge_sound.mp3')
+effect2 = pygame.mixer.Sound('sounds/watch_tick.mp3')
+effect3 = pygame.mixer.Sound('sounds/main_menu_ambient.mp3')
+effect4 = pygame.mixer.Sound('sounds/firefly.mp3')
+
 
 # -------------DISPLAY_SETTINGS---------------------------
 
@@ -20,8 +29,39 @@ cursor = pygame.image.load('images/cursor.png')
 cursor = pygame.transform.scale(cursor, (35, 35))
 pygame.mouse.set_visible(False)
 
+effect3.set_volume(0.2)
+effect3.play(loops=-1, fade_ms=5000)
+
+
+#--------------------------AUDIOSLIDER----------------------------------
+
+class Slider:
+    def __init__(self, x, y, width, height, initial_value=0.5):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.value = initial_value
+        self.knob_rect = pygame.Rect(x + width * initial_value - height // 2, y, height, height)
+        self.dragging = False
+
+    def draw(self, surface):
+        # Рисуем ползунок
+        pygame.draw.rect(surface, (200, 200, 200), self.rect)
+        pygame.draw.rect(surface, (100, 100, 100), self.knob_rect)
+
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self.knob_rect.collidepoint(event.pos):
+                self.dragging = True
+        elif event.type == pygame.MOUSEBUTTONUP:
+            self.dragging = False
+        elif event.type == pygame.MOUSEMOTION and self.dragging:
+            x_pos = event.pos[0] - self.rect.x
+            self.value = max(0, min(1, x_pos / self.rect.width))
+            self.knob_rect.x = self.rect.x + self.value * self.rect.width - self.knob_rect.width // 2
+            mixer.music.set_volume(self.value)  # Устанавливаем громкость
+
 
 # ------------------MENU--------------------------------
+
 
 def main_menu():
     start_button = ImageButton(WIDTH / 2 - (252 / 2), 350, 252, 74, 'new game', 'images/buttons/button.png',
@@ -38,6 +78,7 @@ def main_menu():
 
         screen.fill((0, 0, 0))
         screen.blit(main_background, (200, + 30))
+
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -82,6 +123,9 @@ def settings_menu():
     back_button = ImageButton(WIDTH / 2 - (252 / 2), 550, 252, 74, 'back', 'images/buttons/button.png',
                               'images/buttons/h_button.png', 'sounds/click.mp3')
 
+    volume_slider = Slider(WIDTH/2 - 200, 250, 400, 20)
+    slider_visible = False
+
     running = True
     while running:
         screen.fill((0, 0, 0))
@@ -93,8 +137,14 @@ def settings_menu():
                 pygame.quit()
                 sys.exit()
 
-            if event.type == pygame.USEREVENT and event.button == back_button:
+            if event.type == pygame.USEREVENT and event.button == audio_button:
+                slider_visible = True
+
+            elif event.type == pygame.USEREVENT and event.button == back_button:
                 running = False
+
+            volume_slider.handle_event(event) if slider_visible else None
+
 
             for btn in [audio_button, video_button, back_button]:
                 btn.handle_event(event)
@@ -140,6 +190,12 @@ def load_game():
         pygame.display.flip()
 
 def new_game():
+
+    effect3.stop()
+    effect1.set_volume(0.2)
+    effect2.set_volume(0.2)
+    effect1.play(loops=-1, fade_ms=2000)
+    effect2.play(loops=-1, fade_ms=2000)
 
     running = True
     while running:
