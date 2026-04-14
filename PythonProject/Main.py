@@ -15,7 +15,6 @@ effect2 = pygame.mixer.Sound('sounds/watch_tick.mp3')
 effect3 = pygame.mixer.Sound('sounds/main_menu_ambient.mp3')
 effect4 = pygame.mixer.Sound('sounds/firefly.mp3')
 
-
 # -------------DISPLAY_SETTINGS---------------------------
 
 WIDTH, HEIGHT = 1920, 1080
@@ -30,14 +29,18 @@ cursor = pygame.image.load('images/cursor.png')
 cursor = pygame.transform.scale(cursor, (35, 35))
 pygame.mouse.set_visible(False)
 
-effect3.set_volume(0.2)
-effect3.play(loops=-1, fade_ms=5000)
-
-
-#--------------------------AUDIOSLIDER----------------------------------
-
 # Глобальная переменная для хранения громкости эффектов
 effects_volume = 0.5
+
+# Параметры лампы
+lamp_x = WIDTH // 2
+lamp_y = 150
+base_light_radius = 300
+current_light_radius = base_light_radius
+light_timer = 0
+flicker_intensity = 40  # Насколько сильно меняется радиус
+dim_duration = 0  # Таймер для состояния "темнее"
+
 
 class Slider:
     def __init__(self, x, y, width, height, initial_value=0.5):
@@ -63,7 +66,6 @@ class Slider:
             self.value = max(0, min(1, x_pos / self.rect.width))
             self.knob_rect.x = self.rect.x + self.value * self.rect.width - self.knob_rect.width // 2
             effects_volume = self.value
-            mixer.music.set_volume(self.value)  # Устанавливаем громкость музыки
             # Устанавливаем громкость всех звуковых эффектов
             effect1.set_volume(effects_volume)
             effect2.set_volume(effects_volume)
@@ -71,11 +73,77 @@ class Slider:
             effect4.set_volume(effects_volume)
 
 
-# ------------------MENU--------------------------------
+def update_lamp_logic():
+    """Обновляет логику мерцания лампы"""
+    global current_light_radius, light_timer, dim_duration
 
+    light_timer += 1
+
+    # Если идет период затухания
+    if dim_duration > 0:
+        dim_duration -= 1
+        # Плавно уменьшаем радиус до минимума
+        target_radius = base_light_radius - flicker_intensity - 20
+        current_light_radius += (target_radius - current_light_radius) * 0.1
+    else:
+        # Обычное мерцание
+        if light_timer > 1:  # Обновляем каждые 5 кадров
+            light_timer = 0
+            # Случайное изменение радиуса
+            change = random.randint(-flicker_intensity, flicker_intensity)
+            current_light_radius = base_light_radius + change
+
+            # Небольшой шанс на сильное затухание
+            if random.random() < 0.01:
+                dim_duration = random.randint(2, 8)  # Длительность затухания
+
+
+def draw_lamp_light(surface, offset_x=0, offset_y=0, alpha=100):
+    """Рисует свет лампы с мерцанием"""
+    update_lamp_logic()
+
+    # Создаем поверхность для света
+    light_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+
+    # Цвет света: светло-оранжевый
+    light_color = (255, 200, 100)
+
+    # Рисуем градиентный круг
+    # Внешний круг (полупрозрачный)
+    pygame.draw.circle(light_surface, (*light_color, 0), (896, 164), int(current_light_radius * 1.2))
+
+    # Внутренние круги для градиента
+    for r in range(int(current_light_radius), 0, -20):
+        # Чем ближе к центру, тем меньше альфа (чтобы центр был ярче, но не белым)
+        # Но так как мы рисуем поверх, нам нужно наоборот: центр прозрачнее для фона?
+        # Нет, обычно свет - это добавление яркости.
+        # В данном случае мы рисуем цветной оверлей. Чтобы имитировать свет,
+        # центр должен быть более насыщенным, а края прозрачными.
+
+        # Рассчитываем альфу для кольца: максимум в центре, 0 на краю
+        ratio = r / current_light_radius
+        ring_alpha = int(alpha * (1 - ratio))
+
+        if ring_alpha > 0:
+            # Рисуем кольцо
+            pygame.draw.circle(light_surface, (*light_color, ring_alpha), (lamp_x, lamp_y), r, 2)
+
+    surface.blit(light_surface, (0, 0))
+
+
+# ------------------MENU--------------------------------
 
 def main_menu():
     global effects_volume
+    # Настройка звука для меню
+    effect1.stop()
+    effect2.stop()
+    effect3.set_volume(effects_volume)
+    if not pygame.mixer.get_busy():  # Проверка, чтобы не перезапускать если уже играет, но лучше всегда рестартить для надежности
+        effect3.play(loops=-1, fade_ms=2000)
+    elif effect3.get_num_channels() == 0:
+        effect3.play(loops=-1, fade_ms=2000)
+
     start_button = ImageButton(WIDTH / 2 - (252 / 2), 350, 252, 74, 'new game', 'images/buttons/button.png',
                                'images/buttons/h_button.png', 'sounds/click.mp3')
     load_game_button = ImageButton(WIDTH / 2 - (252 / 2), 450, 252, 74, 'load game', 'images/buttons/button.png',
@@ -85,18 +153,14 @@ def main_menu():
     settings_button = ImageButton(WIDTH / 2 - (252 / 2), 550, 252, 74, 'settings', 'images/buttons/button.png',
                                   'images/buttons/h_button.png', 'sounds/click.mp3')
 
-    # Настройка звука для главного меню: только эффект 3
-    effect1.stop()
-    effect2.stop()
-    effect3.set_volume(effects_volume)
-    effect3.play(loops=-1, fade_ms=5000)
-
     running = True
     while running:
-
         screen.fill((0, 0, 0))
-        screen.blit(main_background, (200, + 30))
+        screen.blit(main_background, (200, 30))
 
+        # Лампа в меню (если нужна, или только в игре? По ТЗ "на кухне", но пусть будет универсально)
+        # В ТЗ сказано "вокруг лампы на кухне", значит в меню свет не рисуем, только фон.
+        # Но если нужно освещение и в меню, раскомментируйте draw_lamp_light(screen)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -110,41 +174,38 @@ def main_menu():
                 sys.exit()
 
             if event.type == pygame.USEREVENT and event.button == settings_button:
-                print("settings")
-                settings_menu('main')
+                settings_menu(is_in_game=False)
 
             if event.type == pygame.USEREVENT and event.button == start_button:
-                print("start")
                 new_game()
-                # После возврата из игры снова включаем музыку меню с сохранённой громкостью
-                effect1.stop()
-                effect2.stop()
-                effect3.set_volume(effects_volume)
-                effect3.play(loops=-1, fade_ms=5000)
 
             if event.type == pygame.USEREVENT and event.button == load_game_button:
-                print("load data")
                 load_game()
-                # После возврата из загрузки снова включаем музыку меню с сохранённой громкостью
-                effect1.stop()
-                effect2.stop()
-                effect3.set_volume(effects_volume)
-                effect3.play(loops=-1, fade_ms=5000)
 
-        for btn in [start_button, load_game_button, quit_button, settings_button]:
-            btn.handle_event(event)
+            # Обработка кнопок
+            for btn in [start_button, load_game_button, quit_button, settings_button]:
+                btn.handle_event(event)
 
         for btn in [start_button, load_game_button, quit_button, settings_button]:
             btn.check_hover(pygame.mouse.get_pos())
             btn.draw(screen)
 
-        x, y = pygame.mouse.get_pos()
-        screen.blit(cursor, (x - 10, y ))
+        # Отрисовка курсора и координат
+        mx, my = pygame.mouse.get_pos()
+        screen.blit(cursor, (mx - 10, my))
+
+        # Вывод координат
+        font_small = pygame.font.Font(None, 20)
+        coord_text = f"x: {mx} y: {my}"
+        text_surf = font_small.render(coord_text, True, (255, 255, 255))
+        screen.blit(text_surf, (mx + 20, my + 5))
+
         pygame.display.flip()
 
 
-def settings_menu(location='main', bg_image=None, light_x=0, light_y=0, light_r=0):
+def settings_menu(is_in_game=False):
     global effects_volume
+
     audio_button = ImageButton(WIDTH / 2 - (252 / 2), 50, 252, 74, 'audio', 'images/buttons/button.png',
                                'images/buttons/h_button.png', 'sounds/click.mp3')
     video_button = ImageButton(WIDTH / 2 - (252 / 2), 150, 252, 74, 'video', 'images/buttons/button.png',
@@ -152,39 +213,20 @@ def settings_menu(location='main', bg_image=None, light_x=0, light_y=0, light_r=
     back_button = ImageButton(WIDTH / 2 - (252 / 2), 550, 252, 74, 'back', 'images/buttons/button.png',
                               'images/buttons/h_button.png', 'sounds/click.mp3')
 
-    volume_slider = Slider(WIDTH/2 - 200, 250, 400, 20)
+    volume_slider = Slider(WIDTH / 2 - 200, 250, 400, 20)
     slider_visible = False
 
-    # Определяем фон в зависимости от локации
-    if location == 'game' and bg_image:
-        current_bg = bg_image
-        has_lighting = True
-    else:
-        current_bg = main_background
-        has_lighting = False
+    # Определяем фон в зависимости от того, где вызваны настройки
+    bg_image = kitchenbg if is_in_game else main_background
 
     running = True
-    clock = pygame.time.Clock()
-
     while running:
         screen.fill((0, 0, 0))
-        screen.blit(current_bg, (200, + 30))
+        screen.blit(bg_image, (200, 30))
 
-        # Если вызвано из игры, добавляем освещение и затемнение как в окне подтверждения
-        if has_lighting:
-            # Создаем поверхность для освещения
-            light_surf = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-            light_surf.fill((0, 0, 0, 0))
-
-            # Рисуем свет с теми же параметрами, что были в игре
-            for i in range(20, 0, -1):
-                r = int(light_r * (i / 20))
-                circle_alpha = int(200 * (1 - (i / 20)))
-                pygame.draw.circle(light_surf, (0, 0, 0, circle_alpha), (light_x, light_y), r)
-
-            screen.blit(light_surf, (0, 0))
-
-            # Добавляем полупрозрачный затемняющий слой поверх всего
+        # Если настройки вызваны в игре, рисуем свет лампы и затемнение
+        if is_in_game:
+            draw_lamp_light(screen)
             overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 150))
             screen.blit(overlay, (0, 0))
@@ -201,8 +243,8 @@ def settings_menu(location='main', bg_image=None, light_x=0, light_y=0, light_r=
             elif event.type == pygame.USEREVENT and event.button == back_button:
                 running = False
 
-            volume_slider.handle_event(event) if slider_visible else None
-
+            if slider_visible:
+                volume_slider.handle_event(event)
 
             for btn in [audio_button, video_button, back_button]:
                 btn.handle_event(event)
@@ -214,11 +256,15 @@ def settings_menu(location='main', bg_image=None, light_x=0, light_y=0, light_r=
         if slider_visible:
             volume_slider.draw(screen)
 
-        x, y = pygame.mouse.get_pos()
-        screen.blit(cursor, (x - 10, y ))
+        # Курсор и координаты
+        mx, my = pygame.mouse.get_pos()
+        screen.blit(cursor, (mx - 10, my))
+        font_small = pygame.font.Font(None, 20)
+        coord_text = f"x: {mx} y: {my}"
+        text_surf = font_small.render(coord_text, True, (255, 255, 255))
+        screen.blit(text_surf, (mx + 20, my + 5))
 
         pygame.display.flip()
-        clock.tick(60)
 
 
 def load_game():
@@ -228,7 +274,7 @@ def load_game():
     running = True
     while running:
         screen.fill((0, 0, 0))
-        screen.blit(main_background, (200, + 30))
+        screen.blit(main_background, (200, 30))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -246,76 +292,38 @@ def load_game():
             btn.check_hover(pygame.mouse.get_pos())
             btn.draw(screen)
 
-        x, y = pygame.mouse.get_pos()
-        screen.blit(cursor, (x - 10, y ))
+        mx, my = pygame.mouse.get_pos()
+        screen.blit(cursor, (mx - 10, my))
+        font_small = pygame.font.Font(None, 20)
+        coord_text = f"x: {mx} y: {my}"
+        text_surf = font_small.render(coord_text, True, (255, 255, 255))
+        screen.blit(text_surf, (mx + 20, my + 5))
 
         pygame.display.flip()
 
-def new_game():
 
+def new_game():
+    global effects_volume
+    # Настройка звука для игры
     effect3.stop()
     effect1.set_volume(effects_volume)
     effect2.set_volume(effects_volume)
     effect1.play(loops=-1, fade_ms=2000)
     effect2.play(loops=-1, fade_ms=2000)
 
-    # Координаты лампы на кухне (центр сверху)
-    light_center_x = WIDTH // 2
-    light_center_y = 150
-
-    # Параметры освещения - уменьшенный радиус и светло-оранжевый цвет
-    base_light_radius = 300  # Уменьшенный базовый радиус
-    current_light_radius = base_light_radius
-    light_color = (255, 200, 100)  # Светло-оранжевый цвет
-
-    flicker_timer = 0
-    is_flickering = False  # Флаг затухания
-
-    # Кнопка выхода в меню (левый верхний угол, 80x50)
+    # Кнопки в левом верхнем углу
     exit_button = ImageButton(10, 10, 80, 50, 'esc', 'images/buttons/button.png',
                               'images/buttons/h_button.png', 'sounds/click.mp3')
-
-    # Кнопка настроек под кнопкой выхода (10, 70, 80x50)
     settings_btn = ImageButton(10, 70, 80, 50, 'set', 'images/buttons/button.png',
                                'images/buttons/h_button.png', 'sounds/click.mp3')
 
     running = True
-    clock = pygame.time.Clock()
-
     while running:
         screen.fill((0, 0, 0))
         screen.blit(kitchenbg, (200, 30))
 
-        # --- Логика мерцания света ---
-        if is_flickering:
-            # Быстрое затухание - фон становится темнее
-            current_light_radius -= 15
-            if current_light_radius < 50:
-                is_flickering = False
-        else:
-            # Плавное возвращение к нормальному размеру
-            if current_light_radius < base_light_radius:
-                current_light_radius += 5
-            else:
-                # Небольшие случайные колебания вокруг базового радиуса
-                current_light_radius = base_light_radius + random.randint(-10, 10)
-
-            # Шанс на начало затухания (2% каждый кадр)
-            if random.random() < 0.02:
-                is_flickering = True
-
-        # --- Отрисовка освещения (светло-оранжевое с градиентом) ---
-        light_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-
-        # Рисуем несколько кругов для мягкого градиента от центра к краям
-        for i in range(10, 0, -1):
-            alpha = int(80 * (i / 10))  # Прозрачность уменьшается к краям
-            radius = int(current_light_radius * (i / 10))
-            if radius > 0:
-                color_with_alpha = (*light_color, alpha)
-                pygame.draw.circle(light_surface, color_with_alpha, (light_center_x, light_center_y), radius)
-
-        screen.blit(light_surface, (0, 0))
+        # Рисуем свет лампы
+        draw_lamp_light(screen)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -323,88 +331,70 @@ def new_game():
                 pygame.quit()
                 sys.exit()
 
-            # Проверка нажатия на кнопку ESC или клик по кнопке выхода
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                if show_confirm_dialog(kitchenbg, light_center_x, light_center_y, current_light_radius, light_color):
-                    return  # Выход из new_game и возврат в main_menu
+                if show_confirm_dialog():
+                    return
 
             if event.type == pygame.USEREVENT and event.button == exit_button:
-                if show_confirm_dialog(kitchenbg, light_center_x, light_center_y, current_light_radius, light_color):
-                    return  # Выход из new_game и возврат в main_menu
+                if show_confirm_dialog():
+                    return
 
             if event.type == pygame.USEREVENT and event.button == settings_btn:
-                settings_menu('game', kitchenbg, light_center_x, light_center_y, current_light_radius, light_color)
-                # После возврата из настроек продолжаем игру с той же музыкой и громкостью
-                effect1.set_volume(effects_volume)
-                effect2.set_volume(effects_volume)
+                settings_menu(is_in_game=True)
 
             exit_button.handle_event(event)
             settings_btn.handle_event(event)
 
         exit_button.check_hover(pygame.mouse.get_pos())
-        settings_btn.check_hover(pygame.mouse.get_pos())
         exit_button.draw(screen)
+        settings_btn.check_hover(pygame.mouse.get_pos())
         settings_btn.draw(screen)
 
-        x, y = pygame.mouse.get_pos()
-        screen.blit(cursor, (x - 10, y))
+        # Курсор и координаты
+        mx, my = pygame.mouse.get_pos()
+        screen.blit(cursor, (mx - 10, my))
+        font_small = pygame.font.Font(None, 20)
+        coord_text = f"x: {mx} y: {my}"
+        text_surf = font_small.render(coord_text, True, (255, 255, 255))
+        screen.blit(text_surf, (mx + 20, my + 5))
 
         pygame.display.flip()
-        clock.tick(60)
 
 
-def show_confirm_dialog(background_image, light_x=0, light_y=0, light_r=0, light_color=(255, 255, 255)):
-    """Показывает окно подтверждения выхода в главное меню.
-    Возвращает True, если нужно выйти в меню.
-    background_image - изображение текущей локации для затемнения.
-    light_x, light_y, light_r - параметры освещения для реалистичного отображения.
-    light_color - цвет освещения."""
+def show_confirm_dialog():
+    """Показывает окно подтверждения выхода в главное меню."""
     dialog_width, dialog_height = 600, 400
     dialog_x = WIDTH // 2 - dialog_width // 2
     dialog_y = HEIGHT // 2 - dialog_height // 2
 
-    # Создаём кнопки Да и Нет
     yes_button = ImageButton(dialog_x + 50, dialog_y + 250, 200, 74, 'yes', 'images/buttons/button.png',
                              'images/buttons/h_button.png', 'sounds/click.mp3')
     no_button = ImageButton(dialog_x + 350, dialog_y + 250, 200, 74, 'no', 'images/buttons/button.png',
                             'images/buttons/h_button.png', 'sounds/click.mp3')
 
     dialog_running = True
-    result = False  # Флаг для возврата результата
+    result = False
 
-    # Проверяем, переданы ли параметры освещения (значит вызов из игры)
-    has_lighting = light_r > 0
+    # Очищаем события, чтобы случайные клики не передались в диалог
+    pygame.event.clear()
 
     while dialog_running:
-        # Рисуем текущую локацию
+        # Рисуем текущий кадр игры под затемнением (свет лампы уже нарисован в цикле new_game,
+        # но так как мы в новом цикле, нужно перерисовать фон и свет)
         screen.fill((0, 0, 0))
-        screen.blit(background_image, (200, 30))
+        screen.blit(kitchenbg, (200, 30))
+        draw_lamp_light(screen)
 
-        # Если есть освещение, рисуем его
-        if has_lighting:
-            light_surf = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-
-            # Рисуем светло-оранжевое освещение с градиентом
-            for i in range(10, 0, -1):
-                alpha = int(80 * (i / 10))
-                radius = int(light_r * (i / 10))
-                if radius > 0:
-                    color_with_alpha = (*light_color, alpha)
-                    pygame.draw.circle(light_surf, color_with_alpha, (light_x, light_y), radius)
-
-            screen.blit(light_surf, (0, 0))
-
-        # Рисуем полупрозрачный затемняющий слой поверх локации
+        # Затемнение
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 150))
         screen.blit(overlay, (0, 0))
 
-        # Рисуем окно подтверждения
+        # Окно подтверждения
         dialog_rect = pygame.Rect(dialog_x, dialog_y, dialog_width, dialog_height)
         pygame.draw.rect(screen, (50, 50, 50), dialog_rect)
         pygame.draw.rect(screen, (200, 200, 200), dialog_rect, 3)
 
-        # Текст вопроса
         font = pygame.font.Font(None, 48)
         text = font.render("Вы хотите выйти в главное меню?", True, (255, 255, 255))
         text_rect = text.get_rect(center=(WIDTH // 2, dialog_y + 100))
@@ -417,12 +407,12 @@ def show_confirm_dialog(background_image, light_x=0, light_y=0, light_r=0, light
 
             if event.type == pygame.USEREVENT and event.button == yes_button:
                 dialog_running = False
-                result = True  # Пользователь согласился выйти
+                result = True
                 break
 
             if event.type == pygame.USEREVENT and event.button == no_button:
                 dialog_running = False
-                result = False  # Пользователь отказался
+                result = False
                 break
 
             yes_button.handle_event(event)
@@ -433,8 +423,13 @@ def show_confirm_dialog(background_image, light_x=0, light_y=0, light_r=0, light
         yes_button.draw(screen)
         no_button.draw(screen)
 
-        x, y = pygame.mouse.get_pos()
-        screen.blit(cursor, (x - 10, y))
+        # Курсор и координаты в диалоге
+        mx, my = pygame.mouse.get_pos()
+        screen.blit(cursor, (mx - 10, my))
+        font_small = pygame.font.Font(None, 20)
+        coord_text = f"x: {mx} y: {my}"
+        text_surf = font_small.render(coord_text, True, (255, 255, 255))
+        screen.blit(text_surf, (mx + 20, my + 5))
 
         pygame.display.flip()
 
