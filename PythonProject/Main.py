@@ -210,6 +210,10 @@ def new_game():
     effect1.play(loops=-1, fade_ms=2000)
     effect2.play(loops=-1, fade_ms=2000)
 
+    # Кнопка выхода в меню (левый верхний угол, 80x50)
+    exit_button = ImageButton(10, 10, 80, 50, 'esc', 'images/buttons/button.png',
+                              'images/buttons/h_button.png', 'sounds/click.mp3')
+
     running = True
     while running:
         screen.fill((0, 0, 0))
@@ -221,6 +225,76 @@ def new_game():
                 pygame.quit()
                 sys.exit()
 
+            # Проверка нажатия на кнопку ESC или клик по кнопке выхода
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                show_confirm_dialog()
+
+            if event.type == pygame.USEREVENT and event.button == exit_button:
+                show_confirm_dialog()
+
+            exit_button.handle_event(event)
+
+        exit_button.check_hover(pygame.mouse.get_pos())
+        exit_button.draw(screen)
+
+        x, y = pygame.mouse.get_pos()
+        screen.blit(cursor, (x - 10, y))
+
+        pygame.display.flip()
+
+
+def show_confirm_dialog():
+    """Показывает окно подтверждения выхода в главное меню"""
+    dialog_width, dialog_height = 600, 400
+    dialog_x = WIDTH // 2 - dialog_width // 2
+    dialog_y = HEIGHT // 2 - dialog_height // 2
+
+    # Создаём кнопки Да и Нет
+    yes_button = ImageButton(dialog_x + 50, dialog_y + 250, 200, 74, 'yes', 'images/buttons/button.png',
+                             'images/buttons/h_button.png', 'sounds/click.mp3')
+    no_button = ImageButton(dialog_x + 350, dialog_y + 250, 200, 74, 'no', 'images/buttons/button.png',
+                            'images/buttons/h_button.png', 'sounds/click.mp3')
+
+    dialog_running = True
+    while dialog_running:
+        # Рисуем полупрозрачный фон поверх игры
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 150))
+        screen.blit(overlay, (0, 0))
+
+        # Рисуем окно подтверждения
+        dialog_rect = pygame.Rect(dialog_x, dialog_y, dialog_width, dialog_height)
+        pygame.draw.rect(screen, (50, 50, 50), dialog_rect)
+        pygame.draw.rect(screen, (200, 200, 200), dialog_rect, 3)
+
+        # Текст вопроса
+        font = pygame.font.Font(None, 48)
+        text = font.render("Вы хотите выйти в главное меню?", True, (255, 255, 255))
+        text_rect = text.get_rect(center=(WIDTH // 2, dialog_y + 100))
+        screen.blit(text, text_rect)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            if event.type == pygame.USEREVENT and event.button == yes_button:
+                dialog_running = False
+                # Прерываем new_game и запускаем main_menu
+                main_menu()
+                return
+
+            if event.type == pygame.USEREVENT and event.button == no_button:
+                dialog_running = False
+                return
+
+            yes_button.handle_event(event)
+            no_button.handle_event(event)
+
+        yes_button.check_hover(pygame.mouse.get_pos())
+        no_button.check_hover(pygame.mouse.get_pos())
+        yes_button.draw(screen)
+        no_button.draw(screen)
 
         x, y = pygame.mouse.get_pos()
         screen.blit(cursor, (x - 10, y))
@@ -230,4 +304,3 @@ def new_game():
 
 # ------------------GAME PROCESS-------------------------
 main_menu()
-
