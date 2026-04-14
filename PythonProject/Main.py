@@ -163,6 +163,9 @@ def settings_menu():
             btn.check_hover(pygame.mouse.get_pos())
             btn.draw(screen)
 
+        if slider_visible:
+            volume_slider.draw(screen)
+
         x, y = pygame.mouse.get_pos()
         screen.blit(cursor, (x - 10, y ))
 
