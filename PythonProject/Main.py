@@ -23,7 +23,7 @@ pygame.display.set_caption("HORROR")
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_icon(pygame.image.load('images/icon.png'))
 main_background = pygame.image.load('images/BGs/background.png')
-kitchenbg = pygame.image.load('images/BGs/kitchen.png')
+kitchenbg = pygame.image.load('images/BGs/kitchen/kitchen.png')
 
 cursor = pygame.image.load('images/cursor.png')
 cursor = pygame.transform.scale(cursor, (35, 35))
