@@ -135,14 +135,12 @@ def draw_lamp_light(surface, offset_x=0, offset_y=0, alpha=100):
 
 def main_menu():
     global effects_volume
-    # Настройка звука для меню
+    # Настройка звука для меню - включаем только 3 эффект
     effect1.stop()
     effect2.stop()
+    effect3.stop()
     effect3.set_volume(effects_volume)
-    if not pygame.mixer.get_busy():  # Проверка, чтобы не перезапускать если уже играет, но лучше всегда рестартить для надежности
-        effect3.play(loops=-1, fade_ms=2000)
-    elif effect3.get_num_channels() == 0:
-        effect3.play(loops=-1, fade_ms=2000)
+    effect3.play(loops=-1, fade_ms=2000)
 
     start_button = ImageButton(WIDTH / 2 - (252 / 2), 350, 252, 74, 'new game', 'images/buttons/button.png',
                                'images/buttons/h_button.png', 'sounds/click.mp3')
