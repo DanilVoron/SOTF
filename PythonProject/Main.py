@@ -35,6 +35,9 @@ effect3.play(loops=-1, fade_ms=5000)
 
 #--------------------------AUDIOSLIDER----------------------------------
 
+# Глобальная переменная для хранения громкости эффектов
+effects_volume = 0.5
+
 class Slider:
     def __init__(self, x, y, width, height, initial_value=0.5):
         self.rect = pygame.Rect(x, y, width, height)
@@ -48,6 +51,7 @@ class Slider:
         pygame.draw.rect(surface, (100, 100, 100), self.knob_rect)
 
     def handle_event(self, event):
+        global effects_volume
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.knob_rect.collidepoint(event.pos):
                 self.dragging = True
@@ -57,7 +61,13 @@ class Slider:
             x_pos = event.pos[0] - self.rect.x
             self.value = max(0, min(1, x_pos / self.rect.width))
             self.knob_rect.x = self.rect.x + self.value * self.rect.width - self.knob_rect.width // 2
-            mixer.music.set_volume(self.value)  # Устанавливаем громкость
+            effects_volume = self.value
+            mixer.music.set_volume(self.value)  # Устанавливаем громкость музыки
+            # Устанавливаем громкость всех звуковых эффектов
+            effect1.set_volume(effects_volume)
+            effect2.set_volume(effects_volume)
+            effect3.set_volume(effects_volume)
+            effect4.set_volume(effects_volume)
 
 
 # ------------------MENU--------------------------------
