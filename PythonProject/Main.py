@@ -83,6 +83,12 @@ def main_menu():
     settings_button = ImageButton(WIDTH / 2 - (252 / 2), 550, 252, 74, 'settings', 'images/buttons/button.png',
                                   'images/buttons/h_button.png', 'sounds/click.mp3')
 
+    # Настройка звука для главного меню: только эффект 3
+    effect1.stop()
+    effect2.stop()
+    effect3.set_volume(0.5)
+    effect3.play(loops=-1, fade_ms=5000)
+
     running = True
     while running:
 
@@ -104,14 +110,29 @@ def main_menu():
             if event.type == pygame.USEREVENT and event.button == settings_button:
                 print("settings")
                 settings_menu()
+                # После возврата из настроек перезапускаем музыку меню
+                effect1.stop()
+                effect2.stop()
+                effect3.set_volume(0.5)
+                effect3.play(loops=-1, fade_ms=5000)
 
             if event.type == pygame.USEREVENT and event.button == start_button:
                 print("start")
                 new_game()
+                # После возврата из игры снова включаем музыку меню
+                effect1.stop()
+                effect2.stop()
+                effect3.set_volume(0.5)
+                effect3.play(loops=-1, fade_ms=5000)
 
             if event.type == pygame.USEREVENT and event.button == load_game_button:
                 print("load data")
                 load_game()
+                # После возврата из загрузки снова включаем музыку меню
+                effect1.stop()
+                effect2.stop()
+                effect3.set_volume(0.5)
+                effect3.play(loops=-1, fade_ms=5000)
 
         for btn in [start_button, load_game_button, quit_button, settings_button]:
             btn.handle_event(event)
@@ -205,14 +226,18 @@ def load_game():
 def new_game():
 
     effect3.stop()
-    effect1.set_volume(0.2)
-    effect2.set_volume(0.2)
+    effect1.set_volume(0.5)
+    effect2.set_volume(0.5)
     effect1.play(loops=-1, fade_ms=2000)
     effect2.play(loops=-1, fade_ms=2000)
 
     # Кнопка выхода в меню (левый верхний угол, 80x50)
     exit_button = ImageButton(10, 10, 80, 50, 'esc', 'images/buttons/button.png',
                               'images/buttons/h_button.png', 'sounds/click.mp3')
+
+    # Кнопка настроек под кнопкой выхода (10, 70, 80x50)
+    settings_btn = ImageButton(10, 70, 80, 50, 'set', 'images/buttons/button.png',
+                               'images/buttons/h_button.png', 'sounds/click.mp3')
 
     running = True
     while running:
@@ -227,15 +252,24 @@ def new_game():
 
             # Проверка нажатия на кнопку ESC или клик по кнопке выхода
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                show_confirm_dialog()
+                if show_confirm_dialog(kitchenbg):
+                    return  # Выход из new_game и возврат в main_menu
 
             if event.type == pygame.USEREVENT and event.button == exit_button:
-                show_confirm_dialog()
+                if show_confirm_dialog(kitchenbg):
+                    return  # Выход из new_game и возврат в main_menu
+
+            if event.type == pygame.USEREVENT and event.button == settings_btn:
+                settings_menu()
+                # После возврата из настроек продолжаем игру с той же музыкой
 
             exit_button.handle_event(event)
+            settings_btn.handle_event(event)
 
         exit_button.check_hover(pygame.mouse.get_pos())
+        settings_btn.check_hover(pygame.mouse.get_pos())
         exit_button.draw(screen)
+        settings_btn.draw(screen)
 
         x, y = pygame.mouse.get_pos()
         screen.blit(cursor, (x - 10, y))
@@ -243,8 +277,10 @@ def new_game():
         pygame.display.flip()
 
 
-def show_confirm_dialog():
-    """Показывает окно подтверждения выхода в главное меню"""
+def show_confirm_dialog(background_image):
+    """Показывает окно подтверждения выхода в главное меню.
+    Возвращает True, если нужно выйти в меню.
+    background_image - изображение текущей локации для затемнения."""
     dialog_width, dialog_height = 600, 400
     dialog_x = WIDTH // 2 - dialog_width // 2
     dialog_y = HEIGHT // 2 - dialog_height // 2
@@ -256,8 +292,14 @@ def show_confirm_dialog():
                             'images/buttons/h_button.png', 'sounds/click.mp3')
 
     dialog_running = True
+    result = False  # Флаг для возврата результата
+
     while dialog_running:
-        # Рисуем полупрозрачный фон поверх игры
+        # Рисуем текущую локацию
+        screen.fill((0, 0, 0))
+        screen.blit(background_image, (200, 30))
+
+        # Рисуем полупрозрачный затемняющий слой поверх локации
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 150))
         screen.blit(overlay, (0, 0))
@@ -280,13 +322,13 @@ def show_confirm_dialog():
 
             if event.type == pygame.USEREVENT and event.button == yes_button:
                 dialog_running = False
-                # Прерываем new_game и запускаем main_menu
-                main_menu()
-                return
+                result = True  # Пользователь согласился выйти
+                break
 
             if event.type == pygame.USEREVENT and event.button == no_button:
                 dialog_running = False
-                return
+                result = False  # Пользователь отказался
+                break
 
             yes_button.handle_event(event)
             no_button.handle_event(event)
@@ -300,6 +342,8 @@ def show_confirm_dialog():
         screen.blit(cursor, (x - 10, y))
 
         pygame.display.flip()
+
+    return result
 
 
 # ------------------GAME PROCESS-------------------------
