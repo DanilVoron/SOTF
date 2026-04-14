@@ -176,9 +176,19 @@ def main_menu():
 
             if event.type == pygame.USEREVENT and event.button == start_button:
                 new_game()
+                # После возврата из игры переключаем звук обратно на меню
+                effect1.stop()
+                effect2.stop()
+                effect3.set_volume(effects_volume)
+                effect3.play(loops=-1, fade_ms=2000)
 
             if event.type == pygame.USEREVENT and event.button == load_game_button:
                 load_game()
+                # После возврата из загрузки игры переключаем звук обратно на меню
+                effect1.stop()
+                effect2.stop()
+                effect3.set_volume(effects_volume)
+                effect3.play(loops=-1, fade_ms=2000)
 
             # Обработка кнопок
             for btn in [start_button, load_game_button, quit_button, settings_button]:
