@@ -24,6 +24,7 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_icon(pygame.image.load('images/icon.png'))
 main_background = pygame.image.load('images/BGs/background.png')
 kitchenbg = pygame.image.load('images/BGs/kitchen/kitchen.png')
+kitchenlightoff = pygame.image.load('images/BGs/kitchen/kitchenlightoff.jpg')
 
 cursor = pygame.image.load('images/cursor.png')
 cursor = pygame.transform.scale(cursor, (35, 35))
@@ -31,6 +32,9 @@ pygame.mouse.set_visible(False)
 
 # Глобальная переменная для хранения громкости эффектов
 effects_volume = 0.5
+
+# Переменная для состояния света на кухне (True = свет включен, False = выключен)
+kitchen_light_on = True
 
 # Параметры лампы
 lamp_x = WIDTH // 2
@@ -76,6 +80,10 @@ class Slider:
 def update_lamp_logic():
     """Обновляет логику мерцания лампы"""
     global current_light_radius, light_timer, dim_duration
+
+    # Если свет выключен, не обновляем мерцание
+    if not kitchen_light_on:
+        return
 
     light_timer += 1
 
@@ -311,7 +319,7 @@ def load_game():
 
 
 def new_game():
-    global effects_volume
+    global effects_volume, kitchen_light_on
     # Настройка звука для игры
     effect3.stop()
     effect1.set_volume(effects_volume)
@@ -324,14 +332,22 @@ def new_game():
                               'images/buttons/h_button.png', 'sounds/click.mp3')
     settings_btn = ImageButton(10, 70, 80, 50, 'set', 'images/buttons/button.png',
                                'images/buttons/h_button.png', 'sounds/click.mp3')
+    turnlight_button = ImageButton(10, 130, 150, 50, 'turnlight', 'images/buttons/button.png',
+                                   'images/buttons/h_button.png', 'sounds/click.mp3')
 
     running = True
     while running:
         screen.fill((0, 0, 0))
-        screen.blit(kitchenbg, (200, 30))
+        
+        # Выбираем фон в зависимости от состояния света
+        if kitchen_light_on:
+            screen.blit(kitchenbg, (200, 30))
+        else:
+            screen.blit(kitchenlightoff, (200, 30))
 
-        # Рисуем свет лампы
-        draw_lamp_light(screen)
+        # Рисуем свет лампы только если свет включен
+        if kitchen_light_on:
+            draw_lamp_light(screen)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -350,13 +366,20 @@ def new_game():
             if event.type == pygame.USEREVENT and event.button == settings_btn:
                 settings_menu(is_in_game=True)
 
+            if event.type == pygame.USEREVENT and event.button == turnlight_button:
+                # Переключаем состояние света
+                kitchen_light_on = not kitchen_light_on
+
             exit_button.handle_event(event)
             settings_btn.handle_event(event)
+            turnlight_button.handle_event(event)
 
         exit_button.check_hover(pygame.mouse.get_pos())
         exit_button.draw(screen)
         settings_btn.check_hover(pygame.mouse.get_pos())
         settings_btn.draw(screen)
+        turnlight_button.check_hover(pygame.mouse.get_pos())
+        turnlight_button.draw(screen)
 
         # Курсор и координаты
         mx, my = pygame.mouse.get_pos()
@@ -390,8 +413,16 @@ def show_confirm_dialog():
         # Рисуем текущий кадр игры под затемнением (свет лампы уже нарисован в цикле new_game,
         # но так как мы в новом цикле, нужно перерисовать фон и свет)
         screen.fill((0, 0, 0))
-        screen.blit(kitchenbg, (200, 30))
-        draw_lamp_light(screen)
+        
+        # Выбираем фон в зависимости от состояния света
+        if kitchen_light_on:
+            screen.blit(kitchenbg, (200, 30))
+        else:
+            screen.blit(kitchenlightoff, (200, 30))
+        
+        # Рисуем свет лампы только если свет включен
+        if kitchen_light_on:
+            draw_lamp_light(screen)
 
         # Затемнение
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
