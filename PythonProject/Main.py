@@ -334,6 +334,8 @@ def new_game():
                                'images/buttons/h_button.png', 'sounds/click.mp3')
     turnlight_button = ImageButton(1563, 413, 40, 52, '', 'images/buttons/turnlight.png',
                                    'images/buttons/tturnlight.png', 'sounds/turnlight.mp3')
+    turnlight_offed_image = pygame.image.load('images/buttons/turnlight_offed.jpg')
+    turnlight_offed_image = pygame.transform.scale(turnlight_offed_image, (40, 52))
 
     running = True
     while running:
@@ -369,6 +371,12 @@ def new_game():
             if event.type == pygame.USEREVENT and event.button == turnlight_button:
                 # Переключаем состояние света
                 kitchen_light_on = not kitchen_light_on
+                # Меняем изображение кнопки в зависимости от состояния света
+                if kitchen_light_on:
+                    turnlight_button.image = pygame.image.load('images/buttons/turnlight.png')
+                    turnlight_button.image = pygame.transform.scale(turnlight_button.image, (40, 52))
+                else:
+                    turnlight_button.image = turnlight_offed_image
 
             exit_button.handle_event(event)
             settings_btn.handle_event(event)
