@@ -333,7 +333,7 @@ def new_game():
     settings_btn = ImageButton(10, 70, 80, 50, 'set', 'images/buttons/button.png',
                                'images/buttons/h_button.png', 'sounds/click.mp3')
     turnlight_button = ImageButton(1563, 413, 40, 52, '', 'images/buttons/turnlight.png',
-                                   'images/buttons/tturnlight.png', 'sounds/turnlight.mp3')
+                                   'images/buttons/turnlight.png', 'sounds/turnlight.mp3')
 
     running = True
     while running:
