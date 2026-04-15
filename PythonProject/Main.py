@@ -333,12 +333,15 @@ def new_game():
     settings_btn = ImageButton(10, 70, 80, 50, 'set', 'images/buttons/button.png',
                                'images/buttons/h_button.png', 'sounds/click.mp3')
     turnlight_button = ImageButton(1563, 413, 40, 52, '', 'images/buttons/turnlight.png',
-                                   'images/buttons/turnlight.png', 'sounds/turnlight.mp3')
+                                   '', 'sounds/turnlight.mp3')
+
+    turnlight_offed_image = pygame.image.load('images/buttons/turnlight_offed.jpg')
+    turnlight_offed_image = pygame.transform.scale(turnlight_offed_image, (40, 52))
 
     running = True
     while running:
         screen.fill((0, 0, 0))
-        
+
         # Выбираем фон в зависимости от состояния света
         if kitchen_light_on:
             screen.blit(kitchenbg, (200, 30))
@@ -369,6 +372,12 @@ def new_game():
             if event.type == pygame.USEREVENT and event.button == turnlight_button:
                 # Переключаем состояние света
                 kitchen_light_on = not kitchen_light_on
+                # Меняем изображение кнопки в зависимости от состояния света
+                if kitchen_light_on:
+                    turnlight_button.image = pygame.image.load('images/buttons/turnlight.png')
+                    turnlight_button.image = pygame.transform.scale(turnlight_button.image, (40, 52))
+                else:
+                    turnlight_button.image = turnlight_offed_image
 
             exit_button.handle_event(event)
             settings_btn.handle_event(event)
@@ -413,13 +422,13 @@ def show_confirm_dialog():
         # Рисуем текущий кадр игры под затемнением (свет лампы уже нарисован в цикле new_game,
         # но так как мы в новом цикле, нужно перерисовать фон и свет)
         screen.fill((0, 0, 0))
-        
+
         # Выбираем фон в зависимости от состояния света
         if kitchen_light_on:
             screen.blit(kitchenbg, (200, 30))
         else:
             screen.blit(kitchenlightoff, (200, 30))
-        
+
         # Рисуем свет лампы только если свет включен
         if kitchen_light_on:
             draw_lamp_light(screen)
